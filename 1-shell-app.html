@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>APKForge Shell</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+:root{
+  --bg:#070710;--s1:#0d0d1e;--s2:#12122a;--s3:#181830;
+  --b1:#1e1e3c;--b2:#272748;
+  --g1:#00ffcc;--g2:#7b5ea7;--g3:#ff4d8f;--g4:#ffbe0b;
+  --tx:#dce8ff;--tx2:#5a6a8a;--tx3:#2a3550;
+  --r:#f87171;--y:#facc15;--bl:#60a5fa;
+}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--tx);font-family:'Space Grotesk',sans-serif;-webkit-font-smoothing:antialiased;}
+
+/* ─── SCREEN WRAPPER ─── */
+.screen{display:flex;flex-direction:column;height:100%;max-width:430px;margin:0 auto;position:relative;}
+
+/* ─── STATUS BAR ─── */
+.sbar{height:26px;background:var(--s1);display:flex;align-items:center;justify-content:space-between;padding:0 14px;flex-shrink:0;border-bottom:1px solid var(--b1);}
+.sbar-l{font-size:11px;font-weight:700;color:var(--tx2);}
+.sbar-r{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--tx3);}
+.sbar-live{color:var(--g3);display:none;align-items:center;gap:3px;font-size:9px;font-weight:700;}
+.sbar-live.on{display:flex;}
+.rdot{width:5px;height:5px;border-radius:50%;background:var(--g3);animation:rdblink 1s step-end infinite;}
+@keyframes rdblink{0%,100%{opacity:1;}50%{opacity:0;}}
+
+/* ─── TOPBAR ─── */
+.topbar{
+  padding:8px 12px;background:var(--s1);border-bottom:1px solid var(--b1);
+  display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:8px;
+}
+.brand{font-size:17px;font-weight:700;letter-spacing:-.5px;white-space:nowrap;}
+.brand b{color:var(--g1);}
+.brand-ring{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--g1);
+  box-shadow:0 0 12px var(--g1);margin-right:6px;animation:ring 2s ease-in-out infinite;}
+@keyframes ring{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.3;transform:scale(.7);}}
+
+.top-right{display:flex;align-items:center;gap:6px;}
+.link-btn{
+  font-size:11px;padding:5px 11px;border-radius:20px;cursor:pointer;border:none;
+  background:var(--s3);border:1px solid var(--b2);color:var(--tx2);
+  display:flex;align-items:center;gap:5px;transition:all .2s;font-family:inherit;
+}
+.link-btn.active{background:rgba(0,255,204,.08);border-color:rgba(0,255,204,.35);color:var(--g1);}
+.link-dot{width:5px;height:5px;border-radius:50%;background:var(--tx3);flex-shrink:0;}
+.link-btn.active .link-dot{background:var(--g1);box-shadow:0 0 6px var(--g1);animation:ring 1.5s ease-in-out infinite;}
+
+.run-btn{
+  background:var(--g1);color:#000;border:none;font-family:inherit;
+  font-weight:700;font-size:13px;padding:7px 15px;border-radius:8px;
+  cursor:pointer;transition:all .15s;flex-shrink:0;
+  box-shadow:0 0 16px rgba(0,255,204,.25);
+}
+.run-btn:active{transform:scale(.95);}
+.run-btn:disabled{opacity:.35;box-shadow:none;}
+
+/* ─── EDITOR TABS ─── */
+.etabs{display:flex;background:var(--s2);border-bottom:1px solid var(--b1);flex-shrink:0;}
+.etab{
+  flex:1;padding:9px 0;text-align:center;font-size:11px;font-weight:600;
+  color:var(--tx3);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;
+  display:flex;align-items:center;justify-content:center;gap:4px;
+}
+.etab .dot{width:5px;height:5px;border-radius:50%;}
+.etab.ah .dot{background:var(--r);}
+.etab.ac .dot{background:var(--bl);}
+.etab.aj .dot{background:var(--y);}
+.etab.ah.on{color:var(--r);border-bottom-color:var(--r);}
+.etab.ac.on{color:var(--bl);border-bottom-color:var(--bl);}
+.etab.aj.on{color:var(--y);border-bottom-color:var(--y);}
+
+/* ─── EDITOR ─── */
+.ed-wrap{flex:1;position:relative;min-height:0;}
+.ed-wrap textarea{
+  position:absolute;inset:0;width:100%;height:100%;
+  background:#050510;color:var(--tx);border:none;outline:none;
+  font-family:'Fira Code',monospace;font-size:12.5px;line-height:1.8;
+  padding:14px;resize:none;tab-size:2;display:none;
+  -webkit-overflow-scrolling:touch;
+}
+.ed-wrap textarea.show{display:block;}
+.ed-wrap textarea::placeholder{color:var(--tx3);}
+
+/* ─── ED FOOTER ─── */
+.edfooter{
+  padding:6px 12px;background:var(--s2);border-top:1px solid var(--b1);
+  display:flex;align-items:center;justify-content:space-between;flex-shrink:0;
+}
+.edinfo{font-size:9px;color:var(--tx3);font-family:'Fira Code',monospace;}
+.edinfo span{color:var(--tx2);}
+.edbtn{font-size:10px;background:none;border:1px solid var(--b1);color:var(--tx3);
+  padding:3px 8px;border-radius:5px;cursor:pointer;font-family:inherit;}
+.edbtn:active{border-color:var(--g1);color:var(--g1);}
+
+/* ─── PHONE PREVIEW PANEL ─── */
+.preview-panel{
+  background:var(--s1);border-top:2px solid var(--b1);
+  flex-shrink:0;overflow:hidden;transition:height .35s cubic-bezier(.4,0,.2,1);height:0;
+}
+.preview-panel.open{height:300px;}
+
+.preview-header{
+  height:30px;background:var(--s2);border-bottom:1px solid var(--b1);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 12px;cursor:pointer;flex-shrink:0;
+}
+.ph-l{font-size:10px;color:var(--tx2);display:flex;align-items:center;gap:6px;}
+.ph-live-dot{width:6px;height:6px;border-radius:50%;background:var(--tx3);}
+.ph-live-dot.on{background:var(--g1);box-shadow:0 0 8px var(--g1);animation:ring 1.5s infinite;}
+.ph-r{font-size:9px;color:var(--tx3);}
+
+.preview-body{display:flex;align-items:center;justify-content:center;gap:10px;padding:8px;height:calc(300px - 30px);}
+
+/* PHONE DEVICE */
+.phone{
+  width:128px;height:232px;background:#04040c;
+  border:1.5px solid #1a1a35;border-radius:22px;
+  display:flex;flex-direction:column;overflow:hidden;flex-shrink:0;position:relative;
+  box-shadow:0 0 0 1px rgba(255,255,255,.02),0 12px 40px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,255,255,.04);
+}
+.phone.glow{box-shadow:0 0 0 1.5px rgba(0,255,204,.2),0 0 28px rgba(0,255,204,.07),0 12px 40px rgba(0,0,0,.7);}
+.phone.vib{animation:pvib .3s ease;}
+@keyframes pvib{0%,100%{transform:none}20%{transform:translate(-2px,0)}40%{transform:translate(2px,0)}60%{transform:translate(-1px,1px)}80%{transform:translate(1px,0)}}
+.pnotch{position:absolute;top:0;left:50%;transform:translateX(-50%);
+  width:40px;height:13px;background:#04040c;border-radius:0 0 9px 9px;
+  border:1.5px solid #1a1a35;border-top:none;z-index:5;}
+.phdr{background:#07071a;padding:17px 8px 5px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;border-bottom:1px solid rgba(255,255,255,.04);}
+.ptime{font-size:8px;color:#445;font-weight:700;font-family:'Fira Code',monospace;}
+.ptitle{font-size:7px;font-weight:700;color:#99a;flex:1;text-align:center;}
+.picons{font-size:6px;color:#223;}
+.pwv{flex:1;position:relative;background:#fff;overflow:hidden;}
+.pwv iframe{width:100%;height:100%;border:none;display:block;}
+.pph{position:absolute;inset:0;background:#080818;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;text-align:center;padding:10px;}
+.pph-icon{font-size:20px;opacity:.3;}
+.pph p{font-size:7px;color:var(--tx3);line-height:1.5;}
+.pftr{background:#07071a;padding:3px 8px;text-align:center;font-size:5px;color:#1e2a40;border-top:1px solid rgba(255,255,255,.03);flex-shrink:0;}
+.ptoast{position:absolute;bottom:28px;left:50%;transform:translateX(-50%) translateY(8px);
+  background:rgba(10,10,28,.95);color:#dde;font-size:7px;padding:4px 9px;border-radius:9px;
+  opacity:0;transition:all .2s;pointer-events:none;z-index:20;max-width:110px;text-align:center;
+  border:1px solid rgba(255,255,255,.06);}
+.ptoast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.homebar{height:2px;width:38px;background:rgba(255,255,255,.09);border-radius:1px;margin:3px auto;flex-shrink:0;}
+
+/* side controls */
+.side-ctrl{display:flex;flex-direction:column;gap:5px;}
+.sctrl{
+  font-size:9px;background:var(--s3);border:1px solid var(--b2);color:var(--tx2);
+  padding:6px 8px;border-radius:7px;cursor:pointer;text-align:center;
+  transition:all .15s;min-width:52px;font-family:inherit;border-style:none;
+}
+.sctrl:active{border:1px solid var(--g1);color:var(--g1);}
+.sctrl.cam-on{background:rgba(255,77,143,.1);border:1px solid var(--g3);color:var(--g3);}
+
+/* ─── SESSION SHEET ─── */
+.sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:100;
+  display:flex;align-items:flex-end;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .25s;backdrop-filter:blur(8px);}
+.sheet-bg.open{opacity:1;pointer-events:auto;}
+.sheet{
+  background:var(--s2);border:1px solid var(--b2);border-radius:20px 20px 0 0;
+  padding:18px 18px 32px;width:100%;max-width:430px;
+  transform:translateY(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);
+}
+.sheet-bg.open .sheet{transform:translateY(0);}
+.sheet-bar{width:34px;height:3px;background:var(--b2);border-radius:2px;margin:0 auto 16px;}
+.sheet-title{font-size:16px;font-weight:700;margin-bottom:4px;}
+.sheet-sub{font-size:11px;color:var(--tx2);line-height:1.6;margin-bottom:14px;}
+
+.code-box{background:var(--bg);border:1px solid var(--b2);border-radius:10px;padding:14px;text-align:center;margin-bottom:12px;}
+.code-big{font-size:34px;font-weight:700;letter-spacing:8px;color:var(--g1);font-family:'Fira Code',monospace;text-shadow:0 0 20px rgba(0,255,204,.3);}
+.code-hint{font-size:9px;color:var(--tx3);margin-top:5px;}
+
+.steps{background:var(--s3);border:1px solid var(--b1);border-radius:8px;padding:10px 12px;font-size:11px;color:var(--tx2);line-height:1.8;margin-bottom:14px;}
+.steps b{color:var(--g4);}
+
+.sheet-btns{display:flex;gap:8px;}
+.sbtn{flex:1;padding:11px;border-radius:8px;font-family:inherit;font-weight:700;font-size:13px;cursor:pointer;border:none;transition:all .15s;}
+.sbtn-p{background:var(--g1);color:#000;}
+.sbtn-p:active{background:#00ddbb;}
+.sbtn-s{background:var(--s3);color:var(--tx2);border:1px solid var(--b2);}
+.sbtn-s:active{border-color:var(--g1);color:var(--g1);}
+
+/* hidden cam */
+#camvid{position:fixed;top:-9999px;left:-9999px;width:320px;height:240px;}
+#camcvs{position:fixed;top:-9999px;left:-9999px;}
+</style>
+</head>
+<body>
+<div class="screen">
+
+<!-- STATUS BAR -->
+<div class="sbar">
+  <div class="sbar-l" id="clk">9:41</div>
+  <div class="sbar-r">
+    <div class="sbar-live" id="slive"><span class="rdot"></span>STREAMING</div>
+    <span>▲ ◆ ●</span>
+  </div>
+</div>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="brand"><span class="brand-ring"></span>APK<b>Forge</b></div>
+  <div class="top-right">
+    <button class="link-btn" id="linkbtn" onclick="openSheet()">
+      <div class="link-dot"></div>
+      <span id="link-label">Link Viewer</span>
+    </button>
+    <button class="run-btn" id="runbtn" onclick="onRun()">▶ RUN</button>
+  </div>
+</div>
+
+<!-- EDITOR TABS -->
+<div class="etabs">
+  <div class="etab ah on" id="th" onclick="tab('html')"><span class="dot"></span>HTML</div>
+  <div class="etab ac"    id="tc" onclick="tab('css')"><span class="dot"></span>CSS</div>
+  <div class="etab aj"    id="tj" onclick="tab('js')"><span class="dot"></span>JS</div>
+</div>
+
+<!-- EDITOR -->
+<div class="ed-wrap">
+  <textarea id="ehtml" class="show" spellcheck="false"
+    placeholder="<!-- Your HTML here -->&#10;&#10;<div id=&quot;app&quot;>&#10;  <h1>Hello World</h1>&#10;</div>"></textarea>
+  <textarea id="ecss" spellcheck="false"
+    placeholder="/* Your CSS */&#10;body { margin:0; font-family:sans-serif; }"></textarea>
+  <textarea id="ejs" spellcheck="false"
+    placeholder="// Your JS&#10;// Android.showToast('hi')&#10;// Android.vibrate(200)&#10;// Android.sendEvent('name','detail')"></textarea>
+</div>
+
+<!-- EDITOR FOOTER -->
+<div class="edfooter">
+  <div class="edinfo"><span id="ec">0</span> chars &nbsp; <span id="el">0</span> lines</div>
+  <div style="display:flex;gap:5px">
+    <button class="edbtn" onclick="demo()">Demo</button>
+    <button class="edbtn" onclick="clearAll()">Clear</button>
+  </div>
+</div>
+
+<!-- PREVIEW PANEL TOGGLE -->
+<div class="preview-header" onclick="togglePreview()">
+  <div class="ph-l">
+    <div class="ph-live-dot" id="pldot"></div>
+    <span id="plabel">Shell Preview</span>
+  </div>
+  <div class="ph-r" id="ptoggle-hint">tap to open ▲</div>
+</div>
+
+<!-- PHONE PREVIEW -->
+<div class="preview-panel" id="preview-panel">
+  <div class="preview-body">
+
+    <div class="phone" id="phone">
+      <div class="pnotch"></div>
+      <div class="phdr">
+        <div class="ptime" id="ptime">9:41</div>
+        <div class="ptitle" id="ptitle">My App</div>
+        <div class="picons">▲●</div>
+      </div>
+      <div class="pwv" id="pwv">
+        <div class="pph" id="pph">
+          <div class="pph-icon">📱</div>
+          <p>Press RUN<br>to load your app</p>
+        </div>
+        <iframe id="pframe" sandbox="allow-scripts allow-same-origin allow-forms allow-modals" style="display:none"></iframe>
+      </div>
+      <div class="ptoast" id="ptoast"></div>
+      <div class="pftr">Inspired by Xolani</div>
+      <div class="homebar"></div>
+    </div>
+
+    <div class="side-ctrl">
+      <button class="sctrl" id="cambtn" onclick="toggleCam()">📷<br>Cam<br>OFF</button>
+      <button class="sctrl" onclick="snap()">📸<br>Snap</button>
+      <button class="sctrl" onclick="testToast()">🍞<br>Toast</button>
+      <button class="sctrl" onclick="testVib()">📳<br>Vibe</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- SESSION SHEET -->
+<div class="sheet-bg" id="sheet" onclick="bgClose(event)">
+  <div class="sheet">
+    <div class="sheet-bar"></div>
+    <div class="sheet-title">🔗 Link to Camera Viewer</div>
+    <div class="sheet-sub">Open <b>camera-viewer.html</b> on another tab or device, then enter this code to start watching.</div>
+    <div class="code-box">
+      <div class="code-big" id="codedisp">——</div>
+      <div class="code-hint">Your session code · tap Copy to share</div>
+    </div>
+    <div class="steps">
+      <b>Steps:</b><br>
+      1 · Open camera-viewer.html<br>
+      2 · Type this code into the viewer<br>
+      3 · Tap "Watch" on the viewer<br>
+      4 · Enable camera here — feed goes live
+    </div>
+    <div class="sheet-btns">
+      <button class="sbtn sbtn-p" onclick="copyCode()">Copy Code</button>
+      <button class="sbtn sbtn-s" onclick="closeSheet()">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- HIDDEN CAMERA ELEMENTS -->
+<video id="camvid" autoplay muted playsinline></video>
+<canvas id="camcvs"></canvas>
+
+<script>
+// ═══════════════════════════ SESSION ═══════════════════════════
+let code = sessionStorage.getItem('apkf_code');
+if(!code){
+  code = (Math.random().toString(36).substr(2,3) + Math.random().toString(36).substr(2,3)).toUpperCase();
+  sessionStorage.setItem('apkf_code', code);
+}
+let ch = null, viewerOn = false;
+
+function initChannel(){
+  if(ch) try{ch.close();}catch(e){}
+  ch = new BroadcastChannel('apkf_' + code);
+  ch.onmessage = e => {
+    const d = e.data;
+    if(d.type === 'viewer_hello'){
+      viewerOn = true; setLinked(true);
+      send({type:'shell_ack', code});
+      phoneToast('👁 Viewer connected');
+    }
+    if(d.type === 'viewer_bye'){ viewerOn = false; setLinked(false); }
+    if(d.type === 'ping') send({type:'pong'});
+  };
+}
+initChannel();
+
+function send(obj){ if(ch) try{ch.postMessage(obj);}catch(e){} }
+
+function setLinked(on){
+  document.getElementById('linkbtn').classList.toggle('active', on);
+  document.getElementById('link-label').textContent = on ? '● Live' : 'Link Viewer';
+  document.getElementById('slive').classList.toggle('on', on && camOn);
+}
+
+// ═══════════════════════════ CLOCK ═══════════════════════════
+function tick(){
+  const d = new Date(), t = d.getHours()+':'+String(d.getMinutes()).padStart(2,'0');
+  document.getElementById('clk').textContent = t;
+  document.getElementById('ptime').textContent = t;
+}
+tick(); setInterval(tick, 10000);
+
+// ═══════════════════════════ EDITOR ═══════════════════════════
+let curTab = 'html';
+function tab(name){
+  ['html','css','js'].forEach(t => {
+    document.getElementById('e'+t).classList.toggle('show', t === name);
+  });
+  document.getElementById('th').classList.toggle('on', name==='html');
+  document.getElementById('tc').classList.toggle('on', name==='css');
+  document.getElementById('tj').classList.toggle('on', name==='js');
+  curTab = name; counts();
+}
+function counts(){
+  const v = document.getElementById('e'+curTab).value;
+  document.getElementById('ec').textContent = v.length;
+  document.getElementById('el').textContent = v.split('\n').length;
+}
+document.querySelectorAll('.ed-wrap textarea').forEach(t => {
+  t.addEventListener('input', () => { counts(); clearTimeout(t._t); t._t = setTimeout(()=>{ if(document.getElementById('ehtml').value.trim()) runCode(true); },900); });
+});
+
+// ═══════════════════════════ PREVIEW ═══════════════════════════
+let prevOpen = false;
+function togglePreview(){
+  prevOpen = !prevOpen;
+  document.getElementById('preview-panel').classList.toggle('open', prevOpen);
+  document.getElementById('ptoggle-hint').textContent = prevOpen ? 'tap to close ▼' : 'tap to open ▲';
+}
+
+// ═══════════════════════════ BUILD + RUN ═══════════════════════════
+function build(){
+  const h = document.getElementById('ehtml').value;
+  const c = document.getElementById('ecss').value;
+  const j = document.getElementById('ejs').value;
+  const title = document.getElementById('ptitle').textContent || 'My App';
+  const bridge = `(function(){
+  const _s=d=>{try{window.parent.postMessage(d,'*');}catch(e){}};
+  window.Android={
+    showToast:m=>_s({type:'toast',msg:String(m)}),
+    vibrate:ms=>_s({type:'vibrate',ms:ms||200}),
+    setTitle:t=>_s({type:'setTitle',title:String(t)}),
+    getDeviceInfo:()=>JSON.stringify({model:'APKForge Shell',sdk:30,manufacturer:'Xolani'}),
+    openUrl:u=>_s({type:'openUrl',url:u}),
+    saveToPrefs:(k,v)=>{try{localStorage.setItem('apkf_'+k,v);}catch(e){}},
+    getFromPrefs:k=>{try{return localStorage.getItem('apkf_'+k)||'';}catch(e){return '';}},
+    sendEvent:(n,d)=>_s({type:'appEvent',name:n,detail:d||''})
+  };
+  window.showToast=window.Android.showToast;
+  document.addEventListener('DOMContentLoaded',()=>_s({type:'appEvent',name:'pageLoaded',detail:'App ready'}));
+  window.addEventListener('click',e=>_s({type:'appEvent',name:'click',detail:(e.target.tagName||'')+(e.target.id?'#'+e.target.id:'')}));
+})();`;
+  const isDoc = /<!DOCTYPE|<html/i.test(h);
+  if(isDoc) return h.replace(/<head([^>]*)>/i,`<head$1><style>${c}</style>`).replace(/<\/body>/i,`<script>${bridge}<\/script><script>${j}<\/script></body>`);
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no"><title>${title}</title><style>*{box-sizing:border-box}html,body{margin:0;padding:0;min-height:100%;width:100%}${c}</style></head><body>${h}<script>${bridge}<\/script><script>${j}<\/script></body></html>`;
+}
+
+function onRun(){
+  if(!document.getElementById('ehtml').value.trim()){ phoneToast('⚠ Paste HTML first'); return; }
+  if(!prevOpen) togglePreview();
+  runCode(false);
+}
+function runCode(silent=false){
+  const btn = document.getElementById('runbtn');
+  if(!silent){ btn.textContent='⏳'; btn.disabled=true; }
+  const fr = document.getElementById('pframe');
+  const ph = document.getElementById('pph');
+  const src = build();
+  const blob = new Blob([src],{type:'text/html'});
+  const url = URL.createObjectURL(blob);
+  if(fr._p) URL.revokeObjectURL(fr._p);
+  fr._p = url;
+  fr.onload = () => {
+    ph.style.display='none'; fr.style.display='block';
+    document.getElementById('phone').classList.add('glow');
+    document.getElementById('pldot').classList.add('on');
+    document.getElementById('plabel').textContent='Shell Running';
+    if(!silent){ btn.innerHTML='▶ RUN'; btn.disabled=false; }
+    send({type:'app_run',ts:Date.now()});
+    sendEv('app_run','Shell loaded');
+  };
+  fr.src = url;
+}
+
+// ═══════════════════════════ IFRAME BRIDGE ═══════════════════════════
+window.addEventListener('message', e => {
+  const d = e.data; if(!d||!d.type) return;
+  if(d.type==='toast'){ phoneToast(d.msg); sendEv('toast',d.msg); }
+  else if(d.type==='vibrate'){ vibrate(); sendEv('vibrate',d.ms+'ms'); }
+  else if(d.type==='setTitle'){ document.getElementById('ptitle').textContent=d.title; sendEv('setTitle',d.title); }
+  else if(d.type==='appEvent'){ sendEv(d.name,d.detail); }
+  else if(d.type==='openUrl') window.open(d.url,'_blank');
+});
+function sendEv(name,detail){ send({type:'event',name,detail,ts:Date.now()}); }
+
+// ═══════════════════════════ CAMERA ═══════════════════════════
+let camOn = false, camStream = null, camTimer = null, frameN = 0;
+
+async function toggleCam(){
+  if(camOn) stopCam(); else await startCam();
+}
+async function startCam(){
+  try{
+    camStream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:320,height:240},audio:false});
+    const v = document.getElementById('camvid');
+    v.srcObject = camStream; await v.play();
+    camOn = true;
+    document.getElementById('cambtn').textContent='📷\nCam\nON';
+    document.getElementById('cambtn').classList.add('cam-on');
+    document.getElementById('slive').classList.toggle('on', viewerOn);
+    camTimer = setInterval(sendFrame, 250);
+    send({type:'cam_on',ts:Date.now()});
+  } catch(err){ phoneToast('Camera: '+err.message); }
+}
+function stopCam(){
+  if(camStream) camStream.getTracks().forEach(t=>t.stop());
+  camStream=null; camOn=false;
+  clearInterval(camTimer); camTimer=null;
+  document.getElementById('cambtn').textContent='📷\nCam\nOFF';
+  document.getElementById('cambtn').classList.remove('cam-on');
+  document.getElementById('slive').classList.remove('on');
+  send({type:'cam_off',ts:Date.now()});
+}
+function sendFrame(){
+  if(!camOn) return;
+  const v=document.getElementById('camvid'), c=document.getElementById('camcvs');
+  c.width=160; c.height=120;
+  const ctx=c.getContext('2d');
+  ctx.save(); ctx.scale(-1,1); ctx.drawImage(v,-160,0,160,120); ctx.restore();
+  const data = c.toDataURL('image/jpeg',.4);
+  send({type:'frame',data,n:++frameN,ts:Date.now()});
+}
+function snap(){
+  if(!camOn){ phoneToast('Enable camera first'); return; }
+  const v=document.getElementById('camvid'), c=document.getElementById('camcvs');
+  c.width=320; c.height=240;
+  const ctx=c.getContext('2d');
+  ctx.save(); ctx.scale(-1,1); ctx.drawImage(v,-320,0,320,240); ctx.restore();
+  const data = c.toDataURL('image/jpeg',.82);
+  send({type:'snapshot',data,label:'Snap @ '+new Date().toLocaleTimeString(),ts:Date.now()});
+  phoneToast('📸 Sent to viewer');
+  sendEv('snapshot','Snapshot sent');
+}
+
+// ═══════════════════════════ PHONE UI ═══════════════════════════
+function phoneToast(msg){
+  const t = document.getElementById('ptoast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2400);
+}
+function vibrate(){
+  const p=document.getElementById('phone');
+  p.classList.remove('vib'); void p.offsetWidth; p.classList.add('vib');
+  if(navigator.vibrate) navigator.vibrate(200);
+  setTimeout(()=>p.classList.remove('vib'),350);
+}
+function testToast(){ phoneToast('Test toast 🍞'); send({type:'event',name:'toast',detail:'Test toast',ts:Date.now()}); }
+function testVib(){ vibrate(); send({type:'event',name:'vibrate',detail:'200ms',ts:Date.now()}); }
+
+// ═══════════════════════════ SESSION SHEET ═══════════════════════════
+function openSheet(){
+  document.getElementById('codedisp').textContent = code;
+  document.getElementById('sheet').classList.add('open');
+}
+function closeSheet(){ document.getElementById('sheet').classList.remove('open'); }
+function bgClose(e){ if(e.target===document.getElementById('sheet')) closeSheet(); }
+function copyCode(){ navigator.clipboard.writeText(code).then(()=>phoneToast('✓ Code copied!')); closeSheet(); }
+
+// ═══════════════════════════ DEMO ═══════════════════════════
+function demo(){
+  document.getElementById('ehtml').value=`<div class="app">
+  <div class="hero"><div class="ico">⚡</div><h1>APKForge</h1><p>Test the bridge</p></div>
+  <div class="grid">
+    <button onclick="go('toast')">🍞 Toast</button>
+    <button onclick="go('vib')">📳 Vibrate</button>
+    <button onclick="go('title')">✏️ Title</button>
+    <button onclick="go('event')">📡 Event</button>
+    <button onclick="go('save')">💾 Save</button>
+    <button onclick="go('load')">📂 Load</button>
+  </div>
+  <div id="out" class="out">Tap a button</div>
+</div>`;
+  document.getElementById('ecss').value=`*{box-sizing:border-box}body{margin:0;min-height:100vh;background:#07070f;color:#dde;font-family:sans-serif;display:flex;align-items:center;justify-content:center;}.app{width:100%;max-width:300px;padding:14px;text-align:center;}.hero{margin-bottom:16px;}.ico{font-size:36px;margin-bottom:6px;}h1{font-size:20px;font-weight:800;margin:0 0 3px;}p{font-size:10px;color:#334;}.grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px;}button{background:#0f0f20;border:1px solid #1e1e35;color:#bbc;padding:11px 6px;border-radius:9px;font-size:12px;cursor:pointer;transition:all .15s;}button:active{border-color:#00ffcc;color:#00ffcc;transform:scale(.95);}.out{background:#0b0b1c;border:1px solid #161628;border-radius:7px;padding:9px;font-size:10px;color:#334;font-family:monospace;}`;
+  document.getElementById('ejs').value=`let saved='';
+function log(m){document.getElementById('out').textContent='› '+m;}
+function go(a){
+  if(a==='toast'){Android.showToast('Hello from shell!');log('Toast fired');}
+  else if(a==='vib'){Android.vibrate(300);log('Vibrate 300ms');}
+  else if(a==='title'){Android.setTitle('Live Demo');log('Title set');}
+  else if(a==='event'){Android.sendEvent('custom_tap','User tapped Event card');log('Custom event sent');}
+  else if(a==='save'){saved='Saved '+new Date().toLocaleTimeString();Android.saveToPrefs('x',saved);log(saved);}
+  else if(a==='load'){log(Android.getFromPrefs('x')||'Nothing saved yet');}
+}`;
+  tab('html'); counts();
+  if(!prevOpen) togglePreview();
+  setTimeout(()=>runCode(false),50);
+}
+
+function clearAll(){
+  ['html','css','js'].forEach(t=>document.getElementById('e'+t).value='');
+  counts();
+}
+counts();
+</script>
+</body>
+</html>
